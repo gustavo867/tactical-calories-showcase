@@ -10,7 +10,33 @@ Este repositório apresenta o produto e suas decisões de engenharia. O código-
 
 **React · Next.js · TypeScript · NestJS · PostgreSQL · Prisma · Zod · Playwright**
 
-![Diário no desktop com saldo de calorias, progresso de macronutrientes, refeições e hidratação](assets/screenshots/daily-dashboard-desktop.png)
+[LinkedIn](https://www.linkedin.com/in/gustavo-santana-83ba611a6/) · [GitHub](https://github.com/gustavo867)
+
+## Demonstração rápida
+
+![Tour animado do diário, busca de alimentos, refeições favoritas e registro individual offline](assets/demo/product-tour.gif)
+
+GIF de 16 segundos montado com capturas reais de desenvolvimento. É uma apresentação de telas, sem simular cliques ou uma sessão contínua. [Origem e contexto](assets/demo/README.md).
+
+## Arquitetura em 30 segundos
+
+```mermaid
+flowchart LR
+    UI["React + Next.js / PWA"] <-->|"réplica e fila por conta"| LOCAL[("IndexedDB")]
+    UI <-->|"API e sincronização em primeiro plano"| API["NestJS"]
+    API -->|"Prisma + transações"| DB[("PostgreSQL")]
+    API <-->|"identidade"| AUTH["Supabase Auth / Google"]
+```
+
+O Service Worker guarda os arquivos estáticos; o IndexedDB persiste dados e pendências por conta. O NestJS verifica a sessão antes de aplicar as operações no PostgreSQL. A primeira preparação exige conexão, e a sincronização ocorre com o aplicativo aberto. [Arquitetura completa](docs/architecture.md).
+
+## Três decisões técnicas principais
+
+1. **Repetir sem duplicar.** IDs estáveis e comprovantes gravados na mesma transação do consumo permitem reenviar uma operação cuja resposta se perdeu sem registrar a refeição duas vezes.
+2. **Resolver conflitos explicitamente.** Revisões de metas e hashes nutricionais detectam alterações remotas; a interface preserva a pendência para revisão, e os registros históricos mantêm os valores usados no consumo.
+3. **Isolar a fila de cada conta.** Partições no IndexedDB, revalidação da sessão e verificação da conta esperada impedem que pendências de uma conta sejam enviadas pela sessão de outra.
+
+[Estudos de engenharia e testes](docs/engineering.md).
 
 [Conheça o produto](#conheça-o-produto) · [Arquitetura](docs/architecture.md) · [Desafios de engenharia](docs/engineering.md) · [Desenvolvimento com IA](#desenvolvimento-com-ia)
 
@@ -31,6 +57,8 @@ O projeto explora esse problema de ponta a ponta: persistência no navegador, co
 - Persistência offline das ações individuais de diário suportadas, com sincronização após reconexão e verificação da conta.
 
 ## Conheça o produto
+
+![Diário no desktop com saldo de calorias, progresso de macronutrientes, refeições e hidratação](assets/screenshots/daily-dashboard-desktop.png)
 
 A interface está em português brasileiro. As imagens são capturas reais de desenvolvimento e validação, com registros ilustrativos, e representam diferentes versões do produto. Consulte as [notas das capturas](assets/screenshots/README.md) para origem e contexto.
 
@@ -58,19 +86,6 @@ A interface está em português brasileiro. As imagens são capturas reais de de
 ![Diário no desktop com ações de copiar refeição e salvar favorita, observações e consumo de água](assets/screenshots/meal-actions-desktop.png)
 
 </details>
-
-## Destaques de engenharia
-
-| Problema                                                      | Decisão de projeto                                                             | Comportamento resultante                                                                      |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| A requisição é concluída, mas a resposta se perde             | IDs estáveis e comprovantes transacionais por conta                            | Repetir a operação original não duplica o consumo                                             |
-| Metas ou referências alimentares mudam em outro dispositivo   | Revisões de metas e hashes nutricionais, com tratamento explícito de conflitos | A pessoa revisa o conflito antes de continuar a fila                                          |
-| Uma resposta atrasada chega depois de novas alterações locais | Verificação de versão do estado confirmado e reaplicação das pendências        | Respostas antigas não substituem silenciosamente o estado confirmado mais novo                |
-| Várias abas tentam sincronizar                                | Web Locks com alternativa baseada em lease no IndexedDB                        | As abas coordenam o envio; os comprovantes no servidor continuam protegendo contra duplicação |
-| Os valores nutricionais de um alimento mudam                  | Snapshots nutricionais imutáveis nos registros de consumo                      | O histórico preserva os valores usados no registro                                            |
-| A pessoa troca de conta com alterações pendentes              | Partições locais separadas e revalidação da sessão antes do envio              | A fila de uma conta não é enviada como se pertencesse a outra                                 |
-
-Os [estudos de engenharia](docs/engineering.md) detalham cenários de falha, escolhas, limitações e cobertura de testes.
 
 ## Arquitetura e tecnologias
 

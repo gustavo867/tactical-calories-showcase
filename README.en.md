@@ -10,7 +10,33 @@ This repository presents the product and its engineering decisions. The applicat
 
 **React · Next.js · TypeScript · NestJS · PostgreSQL · Prisma · Zod · Playwright**
 
-![Desktop diary showing calorie balance, macronutrient progress, meal cards, and hydration](assets/screenshots/daily-dashboard-desktop.png)
+[LinkedIn](https://www.linkedin.com/in/gustavo-santana-83ba611a6/) · [GitHub](https://github.com/gustavo867)
+
+## Quick demo
+
+![Animated tour of the diary, food search, favorite meals, and individual offline entry](assets/demo/product-tour.gif)
+
+A 16-second GIF assembled from actual development screenshots. This is a screen presentation, without simulated clicks or a continuous recorded session. [Sources and context](assets/demo/README.en.md).
+
+## Architecture in 30 seconds
+
+```mermaid
+flowchart LR
+    UI["React + Next.js / PWA"] <-->|"account replica and queue"| LOCAL[("IndexedDB")]
+    UI <-->|"API and foreground synchronization"| API["NestJS"]
+    API -->|"Prisma + transactions"| DB[("PostgreSQL")]
+    API <-->|"identity"| AUTH["Supabase Auth / Google"]
+```
+
+The Service Worker caches static assets; IndexedDB persists account data and pending operations. NestJS verifies the session before applying operations in PostgreSQL. Initial preparation needs a connection, and synchronization runs while the app is open. [Full architecture](docs/architecture.en.md).
+
+## Three key technical decisions
+
+1. **Retry without duplication.** Stable IDs and receipts written in the same transaction as consumption allow a request with a lost response to be retried without recording the meal twice.
+2. **Resolve conflicts explicitly.** Goal revisions and nutritional hashes detect remote changes; the interface preserves pending work for review, and historical entries retain the values used when recorded.
+3. **Isolate each account's queue.** IndexedDB partitions, session revalidation, and expected-account checks prevent one account's pending work from being submitted through another account's session.
+
+[Engineering case studies and tests](docs/engineering.en.md).
 
 [Product tour](#product-tour) · [Architecture](docs/architecture.en.md) · [Engineering challenges](docs/engineering.en.md) · [AI-assisted development](#ai-assisted-development)
 
@@ -31,6 +57,8 @@ The project explores that problem end to end: browser persistence, API contracts
 - Saves supported individual diary actions offline and synchronizes them after reconnection and account verification.
 
 ## Product tour
+
+![Desktop diary showing calorie balance, macronutrient progress, meal cards, and hydration](assets/screenshots/daily-dashboard-desktop.png)
 
 The interface is in Brazilian Portuguese. These are actual development and validation captures, with illustrative entries; they represent different iterations of the product. See [screenshot notes](assets/screenshots/README.en.md) for provenance and context.
 
@@ -58,19 +86,6 @@ The interface is in Brazilian Portuguese. These are actual development and valid
 ![Desktop diary with copy meal and save as favorite actions, meal notes, and hydration progress](assets/screenshots/meal-actions-desktop.png)
 
 </details>
-
-## Engineering highlights
-
-| Problem                                           | Design decision                                                           | Resulting behavior                                                          |
-| ------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| A request succeeds but its response is lost       | Stable operation IDs and transactional receipts scoped to the account     | Retrying the original operation does not duplicate consumption              |
-| Goals or food references change on another device | Goal revisions and nutritional hashes, with explicit conflict handling    | Users review conflicts before blocked operations continue                   |
-| A delayed response arrives after newer local work | Version checks on confirmed snapshots and reprojection of pending actions | Older responses cannot silently replace newer confirmed state               |
-| Multiple tabs try to synchronize                  | Web Locks with an IndexedDB lease fallback                                | Tabs coordinate sending; server receipts remain the final duplication guard |
-| A food's nutritional values change later          | Immutable nutritional snapshots on recorded consumption                   | Historical intake remains tied to the values used when recorded             |
-| A user switches accounts with pending changes     | Separate local partitions and session revalidation before sending         | One account's queue is not submitted as another account                     |
-
-Read the [engineering case studies](docs/engineering.en.md) for concrete failure scenarios, trade-offs, and test coverage.
 
 ## Architecture and stack
 
