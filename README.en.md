@@ -14,9 +14,17 @@ This repository presents the product and its engineering decisions. The applicat
 
 ## Quick demo
 
-![Animated tour of the diary, food search, favorite meals, and individual offline entry](assets/demo/product-tour.gif)
+![Animated tour of the diary, USDA catalog, yesterday’s meal copy, My foods, and individual offline entry](assets/demo/product-tour.gif)
 
-A 16-second GIF assembled from actual development screenshots. This is a screen presentation, without simulated clicks or a continuous recorded session. [Sources and context](assets/demo/README.en.md).
+A 24-second GIF assembled from actual development screenshots. This is a screen presentation, without simulated clicks or a continuous recorded session. [Sources and context](assets/demo/README.en.md).
+
+## v0.7.0 highlights
+
+- **616 foods in the local catalog:** 597 preserved TACO entries and 19 curated USDA SR Legacy references, including prepared mustard and tilapia. Food details identify the source; foods are searchable offline after synchronization.
+- **Copy yesterday’s meal from the destination:** the card opens a review of the same meal on the day before the selected date, with explicit source and destination. Nutritional history is preserved; canceling records no consumption and restores focus to the trigger.
+- **Edit your own public foods:** “My foods” lists private and public items created by the account. Authors can edit both while retaining IDs and past entries; deleting public foods remains blocked.
+
+Updated against the product’s `main` on November 8, 2026, following the v0.7.0 promotion. [Validation references and limits](docs/engineering.en.md#v070-reference).
 
 ## Architecture in 30 seconds
 
@@ -49,7 +57,7 @@ The project explores that problem end to end: browser persistence, API contracts
 ## What the app does
 
 - Tracks food intake, calories, macronutrients, hydration, meal notes, and goals that take effect from a chosen date.
-- Searches an imported TACO food catalog and supports personal foods with private or explicitly shared visibility.
+- Searches a curated TACO and USDA food catalog and supports personal foods with private or explicitly shared visibility and author editing.
 - Handles quantities in grams, servings, and custom household measures, with a review step for multi-food selections.
 - Copies meals and saves reusable favorite combinations while preserving the original nutritional values.
 - Shows historical intake and the goals applicable to each day.
@@ -87,6 +95,23 @@ The interface is in Brazilian Portuguese. These are actual development and valid
 
 </details>
 
+<details>
+<summary>New v0.7.0 flows: catalog, yesterday’s meal copy, and My foods</summary>
+
+<img src="assets/screenshots/catalog-tilapia-mobile.png" width="300" alt="Mobile tilapia details with USDA SR Legacy attribution and a nutritional preview for 50 g">
+
+The complementary catalog identifies the source and scales the preview to the chosen quantity. [Desktop version](assets/screenshots/catalog-tilapia-desktop.png) · [Desktop mustard](assets/screenshots/catalog-mustard-desktop.png) · [Mobile mustard](assets/screenshots/catalog-mustard-mobile.png).
+
+![Lunch card offering the Copy yesterday’s meal action](assets/screenshots/copy-yesterday-desktop.png)
+
+![Meal copy review showing lunch on October 1 as the source and October 2 as the destination](assets/screenshots/copy-yesterday-review-desktop.png)
+
+“Yesterday” is relative to the selected diary date; review comes before recording.
+
+![My foods listing private and public items, both editable by the author, with deletion only for the private item](assets/screenshots/my-foods-desktop.png)
+
+</details>
+
 ## Architecture and stack
 
 The frontend is a **static Next.js export**. NestJS owns authentication and the API on the same origin; PostgreSQL is accessed through Prisma. IndexedDB stores the local account replica and pending operations. A Service Worker caches the static application shell.
@@ -111,7 +136,7 @@ The private application includes tests for response loss and replay, account swi
 
 HTTP integration tests run against the NestJS API and an isolated PostgreSQL database with a local Auth fixture. Playwright exercises the exported frontend and API, with desktop, mobile, and WebKit mobile configurations. Mobile browser emulation does not establish physical iPhone coverage.
 
-GitHub Actions applies different checks by pull request target: `staging` runs lint, types, unit tests, and build; `main` adds database/HTTP integration tests and the Playwright matrix. These describe the configured validation strategy, not a live CI result or a coverage percentage.
+GitHub Actions conservatively selects package suites for PRs targeting `staging`; shared or uncertain changes broaden selection, and documentation-only changes can skip application jobs. PRs targeting `main` and manual runs execute full validation, including database/HTTP integration and the Playwright matrix. Bun download and Next.js build caches are separate from the current build artifact; passing test results are not reused. [Decisions and promotion evidence](docs/engineering.en.md#v070-reference), without claiming measured savings.
 
 ## AI-assisted development
 
@@ -124,7 +149,7 @@ AI assistance is part of the development workflow. The application's documented 
 ## Offline scope and trade-offs
 
 - Initial sign-in and account preparation require a connection. After preparation, the local diary and synchronized food catalog can be used offline.
-- Supported individual actions use the persistent queue. Batch confirmation, household-measure registration, meal reuse, favorite-meal management, and deletion/undo require a connection and prior synchronization of pending individual actions.
+- Supported individual actions use the persistent queue. Batch confirmation, household-measure registration, meal reuse, favorite-meal management, editing owned foods, and deletion/undo require a connection and prior synchronization of pending individual actions.
 - Synchronization runs in the foreground after session verification. Closed-window background synchronization is not guaranteed.
 - Pending data depends on browser storage; clearing or eviction can remove it.
 
