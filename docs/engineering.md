@@ -48,16 +48,49 @@ O consumo registrado também conserva seu snapshot nutricional e, quando dispon�
 
 **Cobertura existente.** `frontend/e2e/offline-accounts.spec.ts` cobre expiração da sessão, troca de conta e retomada do trabalho pela conta original. Testes HTTP e SQL verificam os limites de autorização.
 
+## 5. Ampliar fontes e permitir edição sem perder referências históricas
+
+**Problema.** Somar outra fonte ao catálogo pode colidir códigos ou alterar IDs existentes. Permitir que o autor edite um alimento compartilhado também exige separar a referência atual do valor efetivamente consumido no passado.
+
+**Decisão.** Preservar os 597 IDs TACO e adicionar 19 referências USDA por migrations novas, com identidade global estável, código textual por fonte e proveniência conservada. Conferir os lotes contra o arquivo oficial, incluindo checksum e nutrientes, permite reproduzir a verificação sem depender de uma consulta externa em tempo de uso. TBCA não foi incorporada.
+
+A edição de alimentos privados e públicos próprios mantém ID e visibilidade, com autorização por autor. A referência atual serve a novos registros; snapshots e bases históricas permanecem intactos. A exclusão pública continua bloqueada. Se um consumo offline usar uma referência que mudou, o conflito precisa de revisão em vez de substituição silenciosa.
+
+**Cobertura existente.** As suítes `additional-catalog.spec.ts` e `catalog-expansion.spec.ts` verificam tilápia, mostarda, fonte, cálculo proporcional e catálogo offline atualizado. Integração HTTP e SQL verificam autoria, IDs e histórico; as specs `public-food-management*.spec.ts` cobrem edição, recuperação, conflito e sincronização.
+
+## 6. Selecionar CI sem depender apenas do grafo de imports
+
+**Problema.** Schemas compilados, imports dinâmicos e migrations enumeradas pelo sistema de arquivos criam dependências que um seletor por imports pode não enxergar.
+
+**Decisão.** Selecionar suítes completas por pacote em `staging`, ampliando para todas as suítes unitárias diante de mudanças compartilhadas, remoções, renomeações, caminhos desconhecidos ou falhas de comparação. O job de seleção sempre testa os próprios scripts. Alterações somente documentais podem dispensar jobs da aplicação. `main` e execução manual mantêm banco, integração HTTP e toda a matriz Playwright.
+
+O projeto também habilita o armazenamento global de dependências do Bun 1.4.4 com `linker = "isolated"` e `globalStore = true`, compartilhando pacotes elegíveis entre projetos e worktrees. Isso é distinto do cache de downloads restaurado pela CI. O Docker mantém `--linker hoisted` para copiar dependências locais entre estágios.
+
+O cache global de downloads Bun (`~/.bun/install/cache`) não substitui `bun install --frozen-lockfile`. O cache intermediário Next.js é separado do artifact estático produzido na execução atual. O gate aceita jobs ignorados somente quando previstos no plano e rejeita falhas, cancelamentos ou jobs ausentes. Não há medição de economia de tempo ou custo publicada aqui.
+
+**Qualidade da promoção.** Foram corrigidas fixtures de refresh e restauração do catálogo, além da espera pela requisição abortada no teste de lote. O limite E2E passou para 45 minutos sem reduzir cobertura. O teste de concorrência de rascunhos passou a controlar notificações entre duas abas, mantendo a verificação de rejeição da revisão antiga; essa última correção não alterou a aplicação.
+
 ## Estratégia de validação
 
-| Camada                                   | O que verifica                                                                                                |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Testes unitários de contratos e frontend | Schemas, transições da fila, projeção, locks, classificação de erros e cálculos                               |
-| Integração HTTP do backend               | NestJS, identidade verificada, autorização, Prisma e PostgreSQL em conjunto                                   |
-| Integração SQL                           | Invariantes do domínio, limites entre contas, transações e comprovantes                                       |
-| Playwright                               | Fluxos visíveis pelo frontend estático e API, incluindo funcionamento offline e recuperação                   |
-| GitHub Actions                           | Lint, tipos, testes unitários e build para `staging`; integração e suítes de navegador adicionais para `main` |
+| Camada                                   | O que verifica                                                                              |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Testes unitários de contratos e frontend | Schemas, transições da fila, projeção, locks, classificação de erros e cálculos             |
+| Integração HTTP do backend               | NestJS, identidade verificada, autorização, Prisma e PostgreSQL em conjunto                 |
+| Integração SQL                           | Invariantes do domínio, limites entre contas, transações e comprovantes                     |
+| Playwright                               | Fluxos visíveis pelo frontend estático e API, incluindo funcionamento offline e recuperação |
+| GitHub Actions                           | Seleção conservadora por pacote em `staging`; validação completa em `main` e manual         |
 
 Os testes de integração usam PostgreSQL isolado. A fixture local de Auth substitui o provedor externo de identidade, não o catálogo alimentar ou o banco da aplicação. Os testes de navegador incluem configurações desktop, Chromium mobile e WebKit mobile; casos individuais podem ser específicos de um navegador.
 
 O showcase evita afirmações sem verificação sobre latência, percentuais de cobertura, disponibilidade em produção ou contagens fixas de testes aprovados. Esses dados exigem evidências de execução datadas e associadas à revisão correspondente da aplicação.
+
+## Referência da v0.7.0
+
+Conferido via `gh` em 08/11/2026: a promoção v0.7.0 foi integrada à `main` no commit `8f5a586480bca3ac2c049ad40b0c7d7531c4a734`. A execução completa aprovada é a [42449310809](https://github.com/gustavo867/tactical-calories/actions/runs/42449310809), no HEAD pré-merge `f9768bb44837b078e95757bc13ab4fbca05adb87`: base, desktop, mobile, mobile Safari e gate aprovados. Supabase Preview foi ignorado pela configuração. Esse resultado é datado e não representa CI reexecutada no showcase nem validação manual de deploy hospedado.
+
+As referências abaixo pertencem ao repositório privado do produto; o conteúdo público do showcase e suas imagens não dependem de acesso a ele.
+
+- Entregas: PRs [#135](https://github.com/gustavo867/tactical-calories/pull/135), [#136](https://github.com/gustavo867/tactical-calories/pull/136) e [#137](https://github.com/gustavo867/tactical-calories/pull/137).
+- CI: PRs [#139](https://github.com/gustavo867/tactical-calories/pull/139) e [#140](https://github.com/gustavo867/tactical-calories/pull/140).
+- Promoção e correções: PRs [#142](https://github.com/gustavo867/tactical-calories/pull/142), [#143](https://github.com/gustavo867/tactical-calories/pull/143), [#144](https://github.com/gustavo867/tactical-calories/pull/144) e [#145](https://github.com/gustavo867/tactical-calories/pull/145).
+- Documentação consultada no commit confirmado: `README.md`, `docs/backend-architecture.md`, `docs/ci.md`, `docs/validation/issue-133-ampliacao.md`, `docs/validation/issue-134.md`, `docs/validation/pr-142.md` e `docs/validation/pr-142-draft-concurrency.md`.

@@ -56,6 +56,18 @@ Respostas de bootstrap são validadas e comparadas à versão do estado confirma
 
 Conflitos no histórico de metas ou nas referências nutricionais pausam a fila para resolução explícita. Uma versão não substitui silenciosamente a outra.
 
+## Catálogo e identidade das referências
+
+A v0.7.0 preserva os 597 alimentos e IDs TACO e acrescenta 19 referências curadas USDA SR Legacy, totalizando 616. As migrations são aditivas: o ID global do alimento permanece estável, enquanto o par `source_key` e `source_id` textual distingue códigos de fontes diferentes. A atribuição aparece no detalhe, e os metadados de origem permitem conferir os lotes com o arquivo oficial USDA. TBCA permaneceu pesquisa, sem dados incorporados.
+
+Busca e registro não consultam uma API nutricional externa. A API entrega o catálogo autorizado completo no bootstrap; novos alimentos alteram `catalogRevision` e passam a integrar a réplica após sincronização. O catálogo já sincronizado pode ser pesquisado offline, sem ampliar as ações de escrita suportadas offline.
+
+## Reutilização e autoria sem alterar o passado
+
+O atalho “Copiar refeição de ontem” parte do card de destino e considera a véspera da data selecionada. Reutiliza a revisão de refeições existente, com origem e destino explícitos e snapshots históricos; abrir ou cancelar a revisão não cria consumo. A confirmação continua no fluxo online de reutilização, e o cancelamento devolve o foco ao acionador.
+
+“Meus alimentos” lista os alimentos ativos privados e públicos criados pela conta. A autorização no backend e no banco restringe a edição ao autor, preservando ID e visibilidade. A edição pública atualiza a referência para novos consumos, sem recalcular registros e bases nutricionais anteriores; alimentos públicos não podem ser excluídos. O fluxo exige conexão e sincronização prévia das pendências. Referências alteradas antes de sincronizar um consumo continuam passando pela recuperação explícita de `food_changed`.
+
 ## Hospedagem
 
 O projeto privado possui configuração para servir o frontend exportado e a API NestJS na Vercel, com Supabase fornecendo Auth e PostgreSQL. O diagrama descreve o projeto da aplicação. Não certifica o estado de um deploy hospedado, a configuração OAuth ou os headers de cache em produção.

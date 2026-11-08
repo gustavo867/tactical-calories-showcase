@@ -14,9 +14,17 @@ Este repositório apresenta o produto e suas decisões de engenharia. O código-
 
 ## Demonstração rápida
 
-![Tour animado do diário, busca de alimentos, refeições favoritas e registro individual offline](assets/demo/product-tour.gif)
+![Tour animado do diário, catálogo USDA, cópia de ontem, Meus alimentos e registro individual offline](assets/demo/product-tour.gif)
 
-GIF de 16 segundos montado com capturas reais de desenvolvimento. É uma apresentação de telas, sem simular cliques ou uma sessão contínua. [Origem e contexto](assets/demo/README.md).
+GIF de 24 segundos montado com capturas reais de desenvolvimento. É uma apresentação de telas, sem simular cliques ou uma sessão contínua. [Origem e contexto](assets/demo/README.md).
+
+## Destaques da v0.7.0
+
+- **616 alimentos no catálogo local:** 597 TACO preservados e 19 referências USDA SR Legacy curadas, incluindo mostarda preparada e tilápia. A fonte aparece no detalhe; os alimentos ficam disponíveis para busca offline após sincronização.
+- **Copiar a refeição de ontem pelo destino:** o card abre a revisão da mesma refeição do dia anterior à data selecionada, com origem e destino explícitos. O histórico nutricional é preservado; cancelar não registra consumo e devolve o foco ao acionador.
+- **Editar alimentos públicos próprios:** “Meus alimentos” reúne itens privados e públicos criados pela conta. O autor pode editar ambos, preservando IDs e registros anteriores; excluir alimentos públicos continua bloqueado.
+
+Atualizado com base na `main` do produto em 08/11/2026, após a promoção v0.7.0. [Referências e limites da validação](docs/engineering.md#referência-da-v070).
 
 ## Arquitetura em 30 segundos
 
@@ -49,7 +57,7 @@ O projeto explora esse problema de ponta a ponta: persistência no navegador, co
 ## Funcionalidades
 
 - Registro de alimentos, calorias, macronutrientes, hidratação, observações por refeição e metas com vigência por data.
-- Busca no catálogo TACO importado e cadastro de alimentos pessoais, privados ou compartilhados explicitamente.
+- Busca no catálogo curado TACO e USDA e cadastro de alimentos pessoais, privados ou compartilhados explicitamente, com edição pelo autor.
 - Quantidades em gramas, porções e medidas caseiras personalizadas, com revisão de seleções de vários alimentos.
 - Cópia de refeições e combinações favoritas reutilizáveis, preservando os valores nutricionais originais.
 - Histórico de consumo e das metas vigentes em cada dia.
@@ -87,6 +95,23 @@ A interface está em português brasileiro. As imagens são capturas reais de de
 
 </details>
 
+<details>
+<summary>Novos fluxos da v0.7.0: catálogo, cópia de ontem e Meus alimentos</summary>
+
+<img src="assets/screenshots/catalog-tilapia-mobile.png" width="300" alt="Tilápia no celular com fonte USDA SR Legacy e prévia nutricional para 50 g">
+
+O catálogo complementar identifica a fonte e mantém a prévia proporcional à quantidade. [Versão desktop](assets/screenshots/catalog-tilapia-desktop.png) · [Mostarda no desktop](assets/screenshots/catalog-mustard-desktop.png) · [Mostarda no celular](assets/screenshots/catalog-mustard-mobile.png).
+
+![Card de almoço com a ação Copiar refeição de ontem](assets/screenshots/copy-yesterday-desktop.png)
+
+![Revisão da cópia com almoço de 1 de outubro como origem e 2 de outubro como destino](assets/screenshots/copy-yesterday-review-desktop.png)
+
+“Ontem” é relativo à data selecionada no diário; a revisão antecede o registro.
+
+![Meus alimentos com itens privados e públicos, ambos editáveis pelo autor, e exclusão apenas no privado](assets/screenshots/my-foods-desktop.png)
+
+</details>
+
 ## Arquitetura e tecnologias
 
 O frontend é uma **exportação estática do Next.js**. O NestJS controla a autenticação e a API na mesma origem; o acesso ao PostgreSQL usa Prisma. O IndexedDB armazena a réplica local da conta e as operações pendentes. Um Service Worker mantém o cache dos arquivos estáticos da aplicação.
@@ -111,7 +136,7 @@ A aplicação privada inclui testes para perda de resposta e repetição, troca 
 
 Os testes de integração HTTP usam a API NestJS e um PostgreSQL isolado, com uma fixture local de autenticação. O Playwright exercita o frontend exportado e a API em configurações desktop, mobile e WebKit mobile. A emulação de navegador móvel não comprova cobertura em iPhone físico.
 
-O GitHub Actions seleciona as verificações pelo destino da pull request: `staging` executa lint, tipos, testes unitários e build; `main` acrescenta integração com banco, integração HTTP e a matriz Playwright. Isso descreve a estratégia configurada, sem afirmar um resultado atual de CI ou percentual de cobertura.
+O GitHub Actions usa seleção conservadora por pacote em PRs para `staging`; mudanças compartilhadas ou incertas ampliam a seleção, e alterações somente documentais podem dispensar os jobs da aplicação. PRs para `main` e execuções manuais executam a validação completa, incluindo banco, integração HTTP e matriz Playwright. Caches de downloads Bun e de compilação Next.js são separados do artifact do build atual; resultados de testes não são reutilizados. [Decisões e evidência da promoção](docs/engineering.md#referência-da-v070), sem alegação de economia medida.
 
 ## Desenvolvimento com IA
 
@@ -124,7 +149,7 @@ A assistência de IA faz parte do processo de desenvolvimento. As funcionalidade
 ## Escopo offline e limitações
 
 - O primeiro login e a preparação da conta exigem conexão. Após essa preparação, o diário local e o catálogo sincronizado ficam disponíveis offline.
-- As ações individuais suportadas usam a fila persistente. Confirmação em lote, registro por medida caseira, reutilização de refeições, gestão de refeições favoritas e exclusão/desfazer exigem conexão e sincronização prévia das pendências individuais.
+- As ações individuais suportadas usam a fila persistente. Confirmação em lote, registro por medida caseira, reutilização de refeições, gestão de refeições favoritas, edição de alimentos próprios e exclusão/desfazer exigem conexão e sincronização prévia das pendências individuais.
 - A sincronização acontece em primeiro plano, após verificar a sessão. Não há garantia de sincronização em segundo plano com a janela fechada.
 - As pendências dependem do armazenamento do navegador; limpeza ou expurgo podem removê-las.
 

@@ -48,6 +48,28 @@ Recorded consumption also retains its nutritional snapshot and, where available,
 
 **Existing coverage.** `frontend/e2e/offline-accounts.spec.ts` covers session expiry, account switching, and resuming work with the original account. HTTP and SQL tests cover authorization boundaries.
 
+## 5. Adding sources and author editing without losing historical references
+
+**Problem.** Adding another catalog source can cause code collisions or change existing IDs. Allowing authors to edit shared foods also requires separating the current reference from the values actually consumed in the past.
+
+**Decision.** Preserve all 597 TACO IDs and add 19 USDA references through new migrations, retaining stable global identity, textual source-specific codes, and provenance. Checking batches against the official archive, including checksum and nutrients, makes verification reproducible without a runtime external lookup. TBCA was not incorporated.
+
+Editing owned private and public foods retains ID and visibility, with author authorization. The current reference serves new entries; historical snapshots and calculation bases remain intact. Public deletion remains blocked. If an offline consumption refers to a food that changed, the conflict requires review rather than silent replacement.
+
+**Existing coverage.** `additional-catalog.spec.ts` and `catalog-expansion.spec.ts` verify tilapia, mustard, attribution, proportional calculations, and the updated offline catalog. HTTP and SQL integration verify authorship, IDs, and history; `public-food-management*.spec.ts` cover editing, recovery, conflict, and synchronization.
+
+## 6. Selecting CI without relying solely on the import graph
+
+**Problem.** Compiled schemas, dynamic imports, and migrations enumerated through the file system create dependencies that import-based selection may miss.
+
+**Decision.** Select whole package suites for `staging`, expanding to all unit suites for shared changes, deletions, renames, unknown paths, or comparison failures. The selection job always tests its own scripts. Documentation-only changes can skip application jobs. `main` and manual runs retain database/HTTP integration and the full Playwright matrix.
+
+The project also enables Bun 1.4.4’s global dependency store with `linker = "isolated"` and `globalStore = true`, sharing eligible packages across projects and worktrees. This is distinct from the download cache restored by CI. Docker retains `--linker hoisted` to copy local dependencies between stages.
+
+The global Bun download cache (`~/.bun/install/cache`) does not replace `bun install --frozen-lockfile`. The intermediate Next.js cache is separate from the static artifact produced in the current run. The gate accepts skipped jobs only when the plan permits them and rejects failures, cancellations, or missing jobs. No measured time or cost savings are published here.
+
+**Promotion quality.** Refresh and catalog-restoration fixtures were corrected, along with waiting for an aborted request in the batch test. The E2E limit increased to 45 minutes without reducing coverage. The draft-concurrency test now controls notifications between two tabs while retaining the stale-revision rejection assertion; that last fix did not change the application.
+
 ## Validation strategy
 
 | Layer                                   | What it verifies                                                                                          |
@@ -56,8 +78,19 @@ Recorded consumption also retains its nutritional snapshot and, where available,
 | Backend HTTP integration                | NestJS, verified identity, authorization, Prisma, and PostgreSQL behavior together                        |
 | SQL integration                         | Domain invariants, account boundaries, transaction behavior, and receipts                                 |
 | Playwright                              | User-visible flows through the static frontend and API, including offline and recovery paths              |
-| GitHub Actions                          | Lint, types, unit tests, and build for `staging`; additional integration and browser suites for `main`    |
+| GitHub Actions                          | Conservative package selection for `staging`; full validation for `main` and manual runs                  |
 
 Integration tests use an isolated PostgreSQL database. The local Auth fixture replaces the external identity provider, not the food catalog or application database. Browser tests include desktop, mobile Chromium, and mobile WebKit configurations; individual cases may be browser-specific.
 
 The showcase intentionally avoids unverified latency claims, coverage percentages, production availability claims, and fixed passing-test counts. Those need dated execution evidence from the relevant application revision.
+
+## v0.7.0 reference
+
+Verified through `gh` on November 8, 2026: v0.7.0 was merged into `main` as `8f5a586480bca3ac2c049ad40b0c7d7531c4a734`. The successful full run is [42449310809](https://github.com/gustavo867/tactical-calories/actions/runs/42449310809), on pre-merge HEAD `f9768bb44837b078e95757bc13ab4fbca05adb87`: base, desktop, mobile, mobile Safari, and gate passed. Supabase Preview was skipped by configuration. This is dated evidence, not CI rerun in the showcase or manual validation of a hosted deployment.
+
+The references below belong to the private product repository; the public showcase content and images do not require access to it.
+
+- Features: PRs [#135](https://github.com/gustavo867/tactical-calories/pull/135), [#136](https://github.com/gustavo867/tactical-calories/pull/136), and [#137](https://github.com/gustavo867/tactical-calories/pull/137).
+- CI: PRs [#139](https://github.com/gustavo867/tactical-calories/pull/139) and [#140](https://github.com/gustavo867/tactical-calories/pull/140).
+- Promotion and fixes: PRs [#142](https://github.com/gustavo867/tactical-calories/pull/142), [#143](https://github.com/gustavo867/tactical-calories/pull/143), [#144](https://github.com/gustavo867/tactical-calories/pull/144), and [#145](https://github.com/gustavo867/tactical-calories/pull/145).
+- Documentation consulted at the confirmed commit: `README.md`, `docs/backend-architecture.md`, `docs/ci.md`, `docs/validation/issue-133-ampliacao.md`, `docs/validation/issue-134.md`, `docs/validation/pr-142.md`, and `docs/validation/pr-142-draft-concurrency.md`.
